@@ -1,0 +1,32 @@
+import spacy
+from langchain_core.documents import Document
+from quivr_core.files.file import QuivrFile
+from quivr_core.processor.processor_base import ProcessorBase
+from quivr_core.processor.registry import FileExtension
+
+class SpacyProcessor(ProcessorBase):
+    """
+    Processor that uses spaCy NLP for text files to perform tasks like
+    entity recognition, POS tagging, and other NLP-based enhancements.
+    """
+
+    supported_extensions = [FileExtension.txt, FileExtension.pdf, FileExtension.docx]
+
+    def __init__(self, model="en_core_web_sm") -> None:
+        self.nlp = spacy.load(model)
+
+    async def process_file_inner(self, file: QuivrFile) -> list[Document]:
+        async with aiofiles.open(file.path, mode="r") as f:
+            content = await f.read()
+
+        doc = self.nlp(content)  # Process text with spaCy
+
+        # Extract named entities or other annotations from spaCy
+        entities = [{"text": ent.text, "label": ent.label_} for ent in doc.ents]
+
+        processed_doc = Document(
+            page_content=content,
+            metadata={"entities": entities, "word_count": len(doc)}
+        )
+
+        return [processed_doc]
